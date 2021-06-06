@@ -1,32 +1,34 @@
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
-class AssetRelocatorModify {
-  constructor(dir) {
-    this.dir = dir;
-  }
-
+class AssetRelocatorForgePatch {
   apply(compiler) {
-    const devPath = compiler.options.output.path;
+    const isProd = compiler.options.mode === "production";
 
     compiler.hooks.compilation.tap(
-      "asset-reloate-forge-bodge",
+      "asset-relocator-forge-patch",
       (compilation) => {
         compilation.mainTemplate.hooks.requireExtensions.intercept({
           register: (tapInfo) => {
             if (tapInfo.name == "asset-relocator-loader") {
-              tapInfo.fn = (source) => {
-                return `${source}\n
-if (typeof __webpack_require__ !== 'undefined') {
-  if (__filename.includes('electron.asar')) {
-      __webpack_require__.ab = ${JSON.stringify(devPath)} + '/${this.dir}/';
-  } else  {
-      const { dirname, resolve } = require('path');
-      __webpack_require__.ab = resolve(dirname(__filename), '../${
-        this.dir
-      }/') + '/';
-  }
-}
-`;
+              const origFn = tapInfo.fn;
+
+              tapInfo.fn = (source, chunk) => {
+                const origOutput = origFn(source, chunk);
+
+                if (isProd) {
+                  return (
+                    "const { dirname, resolve } = require('path');\n" +
+                    origOutput.replace(
+                      "__dirname",
+                      "resolve(dirname(__filename), '..')"
+                    )
+                  );
+                } else {
+                  return origOutput.replace(
+                    "__dirname",
+                    JSON.stringify(compiler.options.output.path)
+                  );
+                }
               };
             }
 
@@ -40,5 +42,5 @@ if (typeof __webpack_require__ !== 'undefined') {
 
 module.exports = [
   new ForkTsCheckerWebpackPlugin(),
-  new AssetRelocatorModify("native_modules"),
+  new AssetRelocatorForgePatch(),
 ];
