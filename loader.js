@@ -1,4 +1,4 @@
-const vercel_plugin = require("@vercel/webpack-asset-relocator-loader");
+const vercel_loader = require("@vercel/webpack-asset-relocator-loader");
 
 const hooked = new WeakSet();
 
@@ -18,7 +18,7 @@ function hook(compilation) {
     mainTemplate,
   } = compilation;
 
-  // We only want to modify paths if this webpack config if for a renderer
+  // We only want to modify paths if this webpack config is for a renderer
   // This loader will be called multiple times and we only want to intercept the hook once
   if (isRenderer(options) && !hooked.has(mainTemplate)) {
     hooked.add(mainTemplate);
@@ -59,5 +59,5 @@ function hook(compilation) {
 module.exports = async function (content, map) {
   hook(this._compilation);
 
-  return vercel_plugin.call(this, content, map);
+  return vercel_loader.call(this, content, map);
 };
